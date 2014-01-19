@@ -1,6 +1,6 @@
 {
     "name": "XDM anime repo", 
-    "info_url": "https://github.com/groenlid/XDM-anime-plugin-repo", 
+    "info_url": "https://github.com/lad1337/xdm-anime-plugin-repo", 
     "plugins": {
         "de.uranime.anime": [
             {
@@ -8,14 +8,15 @@
                 "minor_version": 3, 
                 "name": "Anime", 
                 "type": "MediaTypeManager", 
-                "format": "zip", 
+                "format": "github", 
                 "desc": "Anime", 
+                "branch": "master",
                 "xdm_version": [
                     0, 
                     5, 
                     9
                 ], 
-                "download_url": "https://github.com/groenlid/XDM-anime-plugin-repo/archive/master.zip"
+                "download_url": "https://github.com/lad1337/xdm-anime-plugin-repo"
             }
         ],
 	"de.uranime.uranime": [
@@ -24,14 +25,15 @@
                 "minor_version": 3, 
                 "name": "Uranime", 
                 "type": "Provider", 
-                "format": "zip", 
-                "desc": "Anime info from http://urani.me.", 
+                "format": "github", 
+                "desc": "Anime info from http://urani.me.",
+                "branch": "master",
                 "xdm_version": [
                     0, 
                     5, 
                     9
                 ], 
-                "download_url": "https://github.com/groenlid/XDM-anime-plugin-repo/archive/master.zip"
+                "download_url": "https://github.com/lad1337/xdm-anime-plugin-repo"
             }
         ]
     }
