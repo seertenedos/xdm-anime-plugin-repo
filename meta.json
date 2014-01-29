@@ -36,5 +36,22 @@
                 "download_url": "https://github.com/lad1337/xdm-anime-plugin-repo"
             }
         ]
+	"de.lad1337.anime.simplemover": [
+            {
+                "major_version": 0, 
+                "minor_version": 1, 
+                "name": "Anime Episode Mover", 
+                "type": "PostProcessor", 
+                "format": "github", 
+                "desc": "This will move the anime episodes based on a format string, format string syntax http://docs.python.org/2/library/string.html#formatspec",
+                "branch": "master",
+                "xdm_version": [
+                    0, 
+                    5, 
+                    15
+                ], 
+                "download_url": "https://github.com/lad1337/xdm-anime-plugin-repo"
+            }
+        ]
     }
 }
