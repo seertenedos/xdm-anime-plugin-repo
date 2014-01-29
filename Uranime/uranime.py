@@ -112,6 +112,12 @@ class Uranime(Provider):
                 if _episode['image']:
                         episode.setField('screencap_image', self._episode_image_url + '/' + str(_episode['anime_id']) + '/' + _episode['image'], self.tag)
 
+                if "connections" in _episode:
+                    for connection in _episode["connections"]:
+                        if connection["site_id"] in connection_names:
+                            episode.setField('id', connection["source_id"], connection_names[connection["site_id"]])
+                            #log("Adding Connection %s:%s to Episode %s on series %s" % (connection_names[connection["site_id"]], connection["source_id"], _episode['number'], item['title'].encode('utf-8')))
+
                 episode.setField('special', _episode['special'], self.tag)
                 episode.saveTemp()
 
