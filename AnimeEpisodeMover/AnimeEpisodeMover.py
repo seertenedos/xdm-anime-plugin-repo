@@ -1,5 +1,5 @@
-# Author: Dennis Lutter <lad1337@gmail.com>
-# URL: https://github.com/lad1337/XDM-main-plugin-repo/
+# Author: Chris Gilligan
+# URL: https://github.com/seertenedos/XDM-main-plugin-repo/
 #
 # This file is part of a XDM plugin.
 #
@@ -38,7 +38,7 @@ def mkdir_p(path):
         else: raise
 
 class AnimeEpisodeMover(PostProcessor):
-    identifier = 'de.lad1337.anime.simplemover'
+    identifier = 'seer.anime.simplemover'
     version = "0.1"
     types = ["de.uranime.anime"]
     _config = {'show_parent_path': "",
