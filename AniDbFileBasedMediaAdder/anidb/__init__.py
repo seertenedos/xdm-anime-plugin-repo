@@ -55,7 +55,7 @@ class AniDBUnknownDescription(AniDBError):
 	pass
 
 class AniDB:
-	def __init__(self, username, password, localport = 1234, server = ('api.anidb.info', 9000)):
+	def __init__(self, username, password, localport = 13245, server = ('api.anidb.info', 9000)):
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.sock.bind(('0.0.0.0', localport))
 		self.sock.settimeout(10)
