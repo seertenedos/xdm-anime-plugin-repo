@@ -62,7 +62,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             state.setdefault(file, {'File':file})
         log.info("Added new files to queue and about to save. Current queue size is %s'" % len(state))
         self._saveState(state)
-        self.hashFilesInState(state)
+        self._hashFilesInState(state)
         self._getAniDBFileInfoInState(state)
 
         #hashes = self._hashFiles(files)
