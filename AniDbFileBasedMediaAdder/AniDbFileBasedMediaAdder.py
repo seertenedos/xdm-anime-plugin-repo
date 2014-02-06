@@ -23,8 +23,8 @@ from xdm.plugins import *
 import anidb, anidb.hash
 import fnmatch
 import os
-
-
+import xdm
+import json
 import requests
 import csv
 
@@ -44,7 +44,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                    'anidb_password': {'human': 'AniDB Password'}}
 
     _allowed_extensions = ('.avi', '.mkv', '.iso', '.mp4')
-    stateFile = os.path.join(common.DATADIR, ' AniDbFileBasedMediaAdder_state.json')
+    stateFile = os.path.join(xdm.DATADIR, ' AniDbFileBasedMediaAdder_state.json')
     
     def __init__(self, instance='Default'):
         MediaAdder.__init__(self, instance=instance)
@@ -96,9 +96,6 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                         log.info("Found file: %s" % curImage)
             if not allFiles:
                 log.info("No files found!")
-                return (False, processLog[0])
-        else:
-            allFiles = [filePath]
 
         log.info("Found %s files to process" % len(allFiles))
         return allFiles
@@ -115,9 +112,9 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 fileDetails = state[file.name]
                 fileDetails['ed2k'] = file.ed2k
                 fileDetails['size'] = file.size
-                count +=1
+                count += 1
                 if count > 10:
-                    count =0
+                    count = 0
                     self._saveState(state)
 
             self._saveState(state)
@@ -168,7 +165,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                         count =0
                         self._saveState(state)
             self._saveState(state)
-            return None;		
+            return None
 
 
 
@@ -210,15 +207,15 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 	    except anidb.AniDBUnknownFile:
 		log.warn('Unknown file. %s' % file.name)
 		aniDbFileResults.append({'HashedFile':file})
-	return aniDbFileResults;		
+	return aniDbFileResults
 
 
 
     def _loadState(self):
-        state = []
+        state = {}
         if os.path.isfile(self.stateFile):
             log.debug("Loading AniDBMediaAdder state from %s" % self.stateFile)
-            with open(stateFile, "r") as stateData:
+            with open(self.stateFile, "r") as stateData:
                 state = json.loads(stateData.read())
         return state
 
@@ -232,17 +229,17 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             yield line.encode('utf-8')
 
     # get movie watchlist
-    def _getImdbWatchlist(self):
-        try:
-            r = requests.get(self.c.watchlist_url)
-            r.encoding = 'utf-8'
-            csvReader = csv.reader(self._utf8Encoder(r.text.splitlines()), dialect=csv.excel)
-            header = csvReader.next()
-            colId = header.index('const')
-            colTitle = header.index('Title')
-            movies = []
-            for row in csvReader:
-                movies.append({'imdb_id':row[colId], 'title':row[colTitle]})
-            return movies
-        except Exception:
-            return []
+    # def _getImdbWatchlist(self):
+    #     try:
+    #         r = requests.get(self.c.watchlist_url)
+    #         r.encoding = 'utf-8'
+    #         csvReader = csv.reader(self._utf8Encoder(r.text.splitlines()), dialect=csv.excel)
+    #         header = csvReader.next()
+    #         colId = header.index('const')
+    #         colTitle = header.index('Title')
+    #         movies = []
+    #         for row in csvReader:
+    #             movies.append({'imdb_id':row[colId], 'title':row[colTitle]})
+    #         return movies
+    #     except Exception:
+    #         return []
