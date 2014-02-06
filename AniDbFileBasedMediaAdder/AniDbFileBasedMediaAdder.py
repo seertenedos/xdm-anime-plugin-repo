@@ -34,7 +34,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
     addMediaTypeOptions = False
     types = ["de.uranime.anime"]
     screenName = 'AniDB File Processing'
-    
+
     _config = {'path_to_scan': '',
                'anidb_username':'',
                'anidb_password':''}
@@ -43,9 +43,9 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                    'anidb_username': {'human': 'AniDB Username'},
                    'anidb_password': {'human': 'AniDB Password'}}
 
-    _allowed_extensions = ('.avi', '.mkv', '.iso', '.mp4')
-    stateFile = os.path.join(xdm.DATADIR, ' AniDbFileBasedMediaAdder_state.json')
-    
+    _allowed_extensions = ('.avi', '.mkv', '.iso', '.mp4', '.ogm')
+    stateFile = os.path.join(xdm.DATADIR, 'AniDbFileBasedMediaAdder_state.json')
+
     def __init__(self, instance='Default'):
         MediaAdder.__init__(self, instance=instance)
 
@@ -54,29 +54,29 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             return []
 
         state = self._loadState()
-        
+
         log.info("AniDB file scan called for dir'%s'" % self.c.path_to_scan)
         files = self._getListOfFiles()
         log.info("Adding new files to queue. Current queue size is %s'" % len(state))
         for file in files:
-            state.setdefault(file, {'File':file})
+            state.setdefault(file, {'File': file})
         log.info("Added new files to queue and about to save. Current queue size is %s'" % len(state))
         self._saveState(state)
         self._hashFilesInState(state)
         self._getAniDBFileInfoInState(state)
 
-        #hashes = self._hashFiles(files)
-        #aniDbFileResults = self._getAniDBFileInfo(hashes)
+        animes = {}
+        for episode_path, episode_data in self._loadState().items():
+            if episode_data["aid"] not in animes:
+                animes[episode_data["aid"]] = episode_data["english"]
         out = []
-        #for movie in movies:
-        #    additionalData = {}
-        #    additionalData['imdb_id'] = movie['imdb_id']
-        #    out.append(self.Media('de.lad1337.movies',
-        #                          movie['imdb_id'],
-        #                          'tmdb',
-        #                          'Movie',
-        #                          unicode(movie['title'], 'utf-8'),
-        #                          additionalData=additionalData))
+        for aid, name in animes.items():
+            out.append(self.Media('de.uranime.anime',
+                aid,
+                'anidb',
+                'Anime',
+                name)
+            )
         return out
 
     # get the list of files
@@ -106,7 +106,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             if 'ed2k' not in v:
                 filesToHash.append(k)
         if len(filesToHash) > 0:
-            count=0
+            count = 0
             for file in anidb.hash.hash_files(filesToHash, False, ('ed2k',), 3):
                 log.info('{0} ed2k://|file|{1}|{2}|{3}|{4}'.format('Hashed:', file.name, file.size, file.ed2k, ' (cached)' if file.cached else ''))
                 fileDetails = state[file.name]
@@ -121,12 +121,12 @@ class AniDbFileBasedMediaAdder(MediaAdder):
         return None
 
     def _getAniDBFileInfoInState(self, state):
-        filesTolookup=[]
+        filesTolookup = []
         for k, v in state.items():
             if 'FoundOnAniDB' not in v and 'ed2k' in v:
                 filesTolookup.append(v)
-        if len(filesTolookup) > 0:
-            count=0
+        if filesTolookup:
+            count = 0
 
             a = anidb.AniDB(self.c.anidb_username, self.c.anidb_password)
             try:
@@ -146,29 +146,24 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 fid = (fileDetails['size'], fileDetails['ed2k'])
                 try:
                     info = a.get_file(fid, True)
-                    fid = int(info['fid'])
-                            
-                    if (info['english'] == ""): info['english'] = info['romaji']	
-                    log.info('{0} [{1}] {2} ({3}) - {4} - {5} ({6}) -- {7}|{8}'.format('Identified:', info['gtag'], info['romaji'], info['english'], info['epno'], info['epromaji'], info['epname'], info['aid'], info['eid']))
+                    if (info['english'] == ""):
+                        info['english'] = info['romaji']
+                    log.info('{0} [{1}] {2} ({3}) - {4} - {5} ({6}) -- {7}|{8}'.format(
+                        'Identified:', info['gtag'], info['romaji'], info['english'],
+                        info['epno'], info['epromaji'], info['epname'], info['aid'], info['eid'])
+                    )
                     fileDetails.update(info)
                     fileDetails['FoundOnAniDB'] = True
-                    count +=1
+                    count += 1
                     if count > 10:
-                        count =0
+                        count = 0
                         self._saveState(state)
-                    
+
                 except anidb.AniDBUnknownFile:
                     log.warn('Unknown file. %s' % file.name)
                     fileDetails['FoundOnAniDB'] = False
-                    count +=1
-                    if count > 10:
-                        count =0
-                        self._saveState(state)
             self._saveState(state)
             return None
-
-
-
 
     def _hashFiles(self, files):
         cacheHash = True
@@ -182,34 +177,35 @@ class AniDbFileBasedMediaAdder(MediaAdder):
         aniDbFileResults = []
         a = anidb.AniDB(self.c.anidb_username, self.c.anidb_password)
         try:
-		a.auth()
-		log.info('{0} {1}'.format('Logged in as user:', self.c.anidb_username))
-	except anidb.AniDBUserError:
-		log.error('Invalid username/password.')
-		return aniDbFileResults
-	except anidb.AniDBTimeout:
-		log.error('Connection timed out.')
-		return aniDbFileResults
-	except anidb.AniDBError as e:
-		log.error('{0} {1}'.format('Fatal error:', e))
-		return aniDbFileResults
+            a.auth()
+            log.info('{0} {1}'.format('Logged in as user:', self.c.anidb_username))
+        except anidb.AniDBUserError:
+            log.error('Invalid username/password.')
+            return aniDbFileResults
+        except anidb.AniDBTimeout:
+            log.error('Connection timed out.')
+            return aniDbFileResults
+        except anidb.AniDBError as e:
+            log.error('{0} {1}'.format('Fatal error:', e))
+            return aniDbFileResults
 
         for file in hashedFiles:
             fid = (file.size, file.ed2k)
             try:
                 info = a.get_file(fid, True)
-		fid = int(info['fid'])
-			
-		if (info['english'] == ""): info['english'] = info['romaji']	
-		log.info('{0} [{1}] {2} ({3}) - {4} - {5} ({6}) -- {7}|{8}'.format('Identified:', info['gtag'], info['romaji'], info['english'], info['epno'], info['epromaji'], info['epname'], info['aid'], info['eid']))
-		aniDbFileResults.append({'HashedFile':file,'AniDBResult':info})
-		
-	    except anidb.AniDBUnknownFile:
-		log.warn('Unknown file. %s' % file.name)
-		aniDbFileResults.append({'HashedFile':file})
-	return aniDbFileResults
+                fid = int(info['fid'])
 
+                if (info['english'] == ""):
+                    info['english'] = info['romaji']
+                log.info('{0} [{1}] {2} ({3}) - {4} - {5} ({6}) -- {7}|{8}'.format(
+                    'Identified:', info['gtag'], info['romaji'], info['english'],
+                    info['epno'], info['epromaji'], info['epname'], info['aid'], info['eid']))
+                aniDbFileResults.append({'HashedFile':file,'AniDBResult':info})
 
+            except anidb.AniDBUnknownFile:
+                log.warn('Unknown file. %s' % file.name)
+                aniDbFileResults.append({'HashedFile': file})
+        return aniDbFileResults
 
     def _loadState(self):
         state = {}
@@ -227,19 +223,3 @@ class AniDbFileBasedMediaAdder(MediaAdder):
     def _utf8Encoder(self, unicodeCsvData):
         for line in unicodeCsvData:
             yield line.encode('utf-8')
-
-    # get movie watchlist
-    # def _getImdbWatchlist(self):
-    #     try:
-    #         r = requests.get(self.c.watchlist_url)
-    #         r.encoding = 'utf-8'
-    #         csvReader = csv.reader(self._utf8Encoder(r.text.splitlines()), dialect=csv.excel)
-    #         header = csvReader.next()
-    #         colId = header.index('const')
-    #         colTitle = header.index('Title')
-    #         movies = []
-    #         for row in csvReader:
-    #             movies.append({'imdb_id':row[colId], 'title':row[colTitle]})
-    #         return movies
-    #     except Exception:
-    #         return []
