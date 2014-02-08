@@ -13,7 +13,7 @@ states = {
 	'release': 5}
 
 fcode = (
-	'', 'aid', 'eid', 'gid', 'lid','depr', 'state',
+	'aid', 'eid', 'gid', '', 'lid','depr', 'state',
 	'size', 'ed2k', 'md5', 'sha1', 'crc32',
 	'quality', 'source', 'acodec', 'abitrate', 'vcodec', 'vbitrate', 'vres', 'filetype',
 	'dublang', 'sublang', 'length', 'description', 'airdate', 'anifilename')
