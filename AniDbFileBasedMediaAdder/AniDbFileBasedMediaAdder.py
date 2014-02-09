@@ -45,6 +45,8 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
     _allowed_extensions = ('.avi', '.mkv', '.iso', '.mp4', '.ogm')
     stateFile = os.path.join(xdm.DATADIR, 'AniDbFileBasedMediaAdder_state.json')
+    _aidToUidLookup = 'AUID'
+    _filesLookup = 'Files'
     _search_url = "http://groenlid.no-ip.org/api/anime"
     _details_url = "http://groenlid.no-ip.org/api/animedetails"
 
@@ -59,27 +61,28 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
         log.info("AniDB file scan called for dir'%s'" % self.c.path_to_scan)
         files = self._getListOfFiles()
-        log.info("Adding new files to queue. Current queue size is %s'" % len(state))
+        log.info("Adding new files to queue. Current queue size is %s'" % len(state[self._filesLookup]))
         for file in files:
-            state.setdefault(file, {'File': file})
-        log.info("Added new files to queue and about to save. Current queue size is %s'" % len(state))
+            state[self._filesLookup].setdefault(file, {'File': file})
+        log.info("Added new files to queue and about to save. Current queue size is %s'" % len(state[self._filesLookup]))
         self._saveState(state)
         self._hashFilesInState(state)
         self._getAniDBFileInfoInState(state)
 
         animes = {}
-        for episode_path, episode_data in self._loadState().items():
+        for episode_path, episode_data in state[self._filesLookup].items():
             if 'aid' in episode_data:
                 if episode_data["aid"] not in animes:
                     animes[episode_data["aid"]] = episode_data["english"]
         out = []
+
         mtm = common.PM.getMediaTypeManager('de.uranime.anime')[0]
         for aid, name in animes.items():
-            uid = self._getUranimeId(aid, name)
+            uid = self._getUranimeId(aid, name, state)
             if uid == None:
                 log.info('Aid %s was not found on uranime matches' % aid)
             else:
-                log.info('found matching show for aid %s and returning uranime id %s' % (aid, str(uid)) )
+                log.info('found matching show for aid %s and returning uranime id %s' % (aid, str(uid)))
                 out.append(self.Media('de.uranime.anime',
                         uid,
                         'uranime',
@@ -88,7 +91,11 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 )
         return out
 
-    def _getUranimeId(self, aid, animeName):
+    def _getUranimeId(self, aid, animeName, state):
+        auIDList = state[self._aidToUidLookup]
+        if auIDList.has_key(aid):
+            return auIDList[aid]
+
         payload = {}
         payload['title'] = animeName
         r = requests.get(self._search_url, params=payload)
@@ -102,6 +109,8 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 if "connections" in fullAnimeDetails:
                     for connection in fullAnimeDetails["connections"]:
                         if connection["site_id"] == 1 and str(connection["source_id"]) == aid:
+                            auIDList[aid] = item['id']
+                            self._saveState( state)
                             return item['id']
         return None
 
@@ -138,14 +147,14 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
     def _hashFilesInState(self, state):
         filesToHash=[]
-        for k, v in state.items():
+        for k, v in state[self._filesLookup].items():
             if 'ed2k' not in v:
                 filesToHash.append(k)
         if len(filesToHash) > 0:
             count = 0
             for file in anidb.hash.hash_files(filesToHash, False, ('ed2k',), 3):
                 log.info('{0} ed2k://|file|{1}|{2}|{3}|{4}'.format('Hashed:', file.name, file.size, file.ed2k, ' (cached)' if file.cached else ''))
-                fileDetails = state[file.name]
+                fileDetails = state[self._filesLookup][file.name]
                 fileDetails['ed2k'] = file.ed2k
                 fileDetails['size'] = file.size
                 count += 1
@@ -158,7 +167,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
     def _getAniDBFileInfoInState(self, state):
         filesTolookup = []
-        for k, v in state.items():
+        for k, v in state[self._filesLookup].items():
             if 'FoundOnAniDB' not in v and 'ed2k' in v:
                 filesTolookup.append(v)
         if filesTolookup:
@@ -201,54 +210,14 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             self._saveState(state)
             return None
 
-    def _hashFiles(self, files):
-        cacheHash = True
-        hashedFiles = []
-        for file in anidb.hash.hash_files(files, cacheHash, ('ed2k',)):
-            log.info('{0} ed2k://|file|{1}|{2}|{3}|{4}'.format('Hashed:', file.name, file.size, file.ed2k, ' (cached)' if file.cached else ''))
-            hashedFiles.append(file)
-        return hashedFiles
-
-    def _getAniDBFileInfo(self, hashedFiles):
-        aniDbFileResults = []
-        a = anidb.AniDB(self.c.anidb_username, self.c.anidb_password)
-        try:
-            a.auth()
-            log.info('{0} {1}'.format('Logged in as user:', self.c.anidb_username))
-        except anidb.AniDBUserError:
-            log.error('Invalid username/password.')
-            return aniDbFileResults
-        except anidb.AniDBTimeout:
-            log.error('Connection timed out.')
-            return aniDbFileResults
-        except anidb.AniDBError as e:
-            log.error('{0} {1}'.format('Fatal error:', e))
-            return aniDbFileResults
-
-        for file in hashedFiles:
-            fid = (file.size, file.ed2k)
-            try:
-                info = a.get_file(fid, True)
-                fid = int(info['fid'])
-
-                if (info['english'] == ""):
-                    info['english'] = info['romaji']
-                log.info('{0} [{1}] {2} ({3}) - {4} - {5} ({6}) -- {7}|{8}'.format(
-                    'Identified:', info['gtag'], info['romaji'], info['english'],
-                    info['epno'], info['epromaji'], info['epname'], info['aid'], info['eid']))
-                aniDbFileResults.append({'HashedFile':file,'AniDBResult':info})
-
-            except anidb.AniDBUnknownFile:
-                log.warn('Unknown file. %s' % file.name)
-                aniDbFileResults.append({'HashedFile': file})
-        return aniDbFileResults
-
     def _loadState(self):
         state = {}
         if os.path.isfile(self.stateFile):
             log.debug("Loading AniDBMediaAdder state from %s" % self.stateFile)
             with open(self.stateFile, "r") as stateData:
                 state = json.loads(stateData.read())
+        state.setdefault(self._aidToUidLookup,{})
+        state.setdefault(self._filesLookup,{})
         return state
 
     def _saveState(self, state):
