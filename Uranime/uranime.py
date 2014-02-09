@@ -47,7 +47,7 @@ class Uranime(Provider):
 
         return rootElement
 
-    def getElement(self, id, element=None):
+    def getElement(self, id, element=None, tag=None):
         query_id = None
         if element is not None:
             query_id = element.getField('id', self._tag)

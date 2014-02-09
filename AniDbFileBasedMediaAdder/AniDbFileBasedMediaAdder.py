@@ -83,12 +83,14 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 log.info('Aid %s was not found on uranime matches' % aid)
             else:
                 log.info('found matching show for aid %s and returning uranime id %s' % (aid, str(uid)))
-                out.append(self.Media('de.uranime.anime',
-                        uid,
-                        'uranime',
-                        'Anime',
-                        name)
+                media = self.Media('de.uranime.anime',
+                    uid,
+                    'uranime',
+                    'Anime',
+                    name
                 )
+                media.status = common.DOWNLOADED
+                out.append(media)
         return out
 
     def _getUranimeId(self, aid, animeName, state):
