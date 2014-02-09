@@ -45,6 +45,8 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
     _allowed_extensions = ('.avi', '.mkv', '.iso', '.mp4', '.ogm')
     stateFile = os.path.join(xdm.DATADIR, 'AniDbFileBasedMediaAdder_state.json')
+    _search_url = "http://groenlid.no-ip.org/api/anime"
+    _details_url = "http://groenlid.no-ip.org/api/animedetails"
 
     def __init__(self, instance='Default'):
         MediaAdder.__init__(self, instance=instance)
@@ -67,17 +69,51 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
         animes = {}
         for episode_path, episode_data in self._loadState().items():
-            if episode_data["aid"] not in animes:
-                animes[episode_data["aid"]] = episode_data["english"]
+            if 'aid' in episode_data:
+                if episode_data["aid"] not in animes:
+                    animes[episode_data["aid"]] = episode_data["english"]
         out = []
+        mtm = common.PM.getMediaTypeManager('de.uranime.anime')[0]
         for aid, name in animes.items():
-            out.append(self.Media('de.uranime.anime',
-                aid,
-                'anidb',
-                'Anime',
-                name)
-            )
+            uid = self._getUranimeId(aid, name)
+            if uid == None:
+                log.info('Aid %s was not found on uranime matches' % aid)
+            else:
+                log.info('found matching show for aid %s and returning uranime id %s' % (aid, str(uid)) )
+                out.append(self.Media('de.uranime.anime',
+                        uid,
+                        'uranime',
+                        'Anime',
+                        name)
+                )
         return out
+
+    def _getUranimeId(self, aid, animeName):
+        payload = {}
+        payload['title'] = animeName
+        r = requests.get(self._search_url, params=payload)
+        log('uranime search url ' + r.url)
+        searchresult = r.json()
+        uid = None
+        for item in searchresult:
+            showDetails = requests.get("%s/%s" % (self._details_url, item['id']))
+            if showDetails != None:
+                fullAnimeDetails = showDetails.json()
+                if "connections" in fullAnimeDetails:
+                    for connection in fullAnimeDetails["connections"]:
+                        if connection["site_id"] == 1 and str(connection["source_id"]) == aid:
+                            return item['id']
+        return None
+
+
+    def successfulAdd(self, mediaList):
+        """media list is a list off all the stuff to remove
+        with the same objs that where returned in runShedule() """
+        #if self.c.remove_movies and len(mediaList):
+        #    return self._removeFromWatchlist(self.c.username, self.c.password, self.c.apikey, mediaList)
+
+
+        return True
 
     # get the list of files
     def _getListOfFiles(self):
@@ -160,7 +196,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                         self._saveState(state)
 
                 except anidb.AniDBUnknownFile:
-                    log.warn('Unknown file. %s' % file.name)
+                    log.info('Unknown file. %s' % file.name)
                     fileDetails['FoundOnAniDB'] = False
             self._saveState(state)
             return None
