@@ -121,22 +121,25 @@ class AniDbFileBasedMediaAdder(MediaAdder):
     def successfulAdd(self, mediaList):
         """media list is a list off all the stuff to remove
         with the same objs that where returned in runShedule() """
-        files = self._loadState()["Files"]
-        for aid, uid, anime in [(m.additionalData["aid"], m.externalID, m.root) for m in mediaList]:
-            # aid is the anidb id
-            # uid is the uranime id
-            # anime is the XDM (root)element of the anime
-
-            # this whole thing is rather slow ... to many loops over the files dict
-            for episode in list(anime.children):
-                for file_location, file_info in files.items():
-                    if aid == file_info["aid"] and str(episode.number) == file_info["epno"]:
-                        location = episode.addLocation(file_location)
-                        location.extra_data["anidb_fid"] = file_info["fid"] # extra_data saves on the fly
-                        episode.status = common.COMPLETED
-                        episode.setField('eid', file_info['eid'], 'anidb')
-                        episode.save()
-
+        state = self._loadState()
+        files = state["Files"]
+        for file_location, file_info in list(files.items()):
+            found = False
+            for aid, uid, anime in [(m.additionalData["aid"], m.externalID, m.root) for m in mediaList]:
+                if found:
+                    break
+                if aid == file_info["aid"]:
+                    for episode in list(anime.children):
+                        if str(episode.number) == file_info["epno"]:
+                            location = episode.addLocation(file_location)
+                            location.extra_data["anidb_fid"] = file_info["fid"] # extra_data saves on the fly
+                            episode.status = common.COMPLETED
+                            episode.setField('eid', file_info['eid'], 'anidb')
+                            episode.save()
+                            del files[file_location]
+                            found = True
+                            break
+        self._saveState(state)
         return True
 
     # get the list of files
