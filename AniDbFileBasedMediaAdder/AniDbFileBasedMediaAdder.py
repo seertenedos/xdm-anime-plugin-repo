@@ -47,8 +47,8 @@ class AniDbFileBasedMediaAdder(MediaAdder):
     stateFile = os.path.join(xdm.DATADIR, 'AniDbFileBasedMediaAdder_state.json')
     _aidToUidLookup = 'AUID'
     _filesLookup = 'Files'
-    _search_url = "http://groenlid.no-ip.org/api/anime"
-    _details_url = "http://groenlid.no-ip.org/api/animedetails"
+    _search_url = "http://urani.me:3000/api/anime"
+    _details_url = "http://urani.me:3000/api/animedetails"
 
     def __init__(self, instance='Default'):
         MediaAdder.__init__(self, instance=instance)
@@ -100,17 +100,16 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             return auIDList[aid]
 
         payload = {}
-        payload['title'] = animeName
+        payload['source_id'] = aid
+        payload['site_id'] = 1 #anidb
         r = requests.get(self._search_url, params=payload)
         log('uranime search url ' + r.url)
         searchresult = r.json()
         uid = None
         for item in searchresult:
-            showDetails = requests.get("%s/%s" % (self._details_url, item['id']))
-            if showDetails != None:
-                fullAnimeDetails = showDetails.json()
-                if "connections" in fullAnimeDetails:
-                    for connection in fullAnimeDetails["connections"]:
+            if item != None:
+                if "connections" in item:
+                    for connection in item["connections"]:
                         if connection["site_id"] == 1 and str(connection["source_id"]) == aid:
                             auIDList[aid] = item['id']
                             self._saveState( state)
@@ -125,6 +124,9 @@ class AniDbFileBasedMediaAdder(MediaAdder):
         files = state["Files"]
         for file_location, file_info in list(files.items()):
             found = False
+            if "aid" not in file_info:
+                continue
+
             for aid, uid, anime in [(m.additionalData["aid"], m.externalID, m.root) for m in mediaList]:
                 if found:
                     break
