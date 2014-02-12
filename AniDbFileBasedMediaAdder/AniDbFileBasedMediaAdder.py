@@ -126,6 +126,8 @@ class AniDbFileBasedMediaAdder(MediaAdder):
             found = False
             if "aid" not in file_info:
                 continue
+            if not os.path.isfile(file_location):
+                del files[file_location]
 
             for aid, uid, anime in [(m.additionalData["aid"], m.externalID, m.root) for m in mediaList]:
                 if found:
@@ -133,16 +135,44 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 if aid == file_info["aid"]:
                     for episode in list(anime.children):
                         if str(episode.number) == file_info["epno"]:
-                            location = episode.addLocation(file_location)
-                            location.extra_data["anidb_fid"] = file_info["fid"] # extra_data saves on the fly
-                            episode.status = common.COMPLETED
-                            episode.setField('eid', file_info['eid'], 'anidb')
-                            episode.save()
-                            del files[file_location]
+                            #location = episode.addLocation(file_location)
+                            #location.extra_data["anidb_fid"] = file_info["fid"] # extra_data saves on the fly
+                            #episode.status = common.COMPLETED
+                            #episode.setField('eid', file_info['eid'], 'anidb')
+                            #episode.save()
+                            self._ppFileAndMove(episode, file_location, file_info["fid"], files)
                             found = True
                             break
         self._saveState(state)
+        log.info('MediaAdder FInished')
         return True
+
+
+    def _ppFileAndMove(self, element, initial_path, fid, filesCollection):
+        pp_try = False
+        new_location = initial_path
+        ppResult = False
+        fileMoved = False
+        for pp in common.PM.getPostProcessors(runFor=element.manager):
+            log(u'Starting PP on %s with %s at %s' % (element, pp, new_location))
+            ppResult, _new_location, pp_log = pp.postProcessPath(element, new_location)
+            pp_try = True
+            if ppResult:
+                if _new_location and new_location != _new_location:
+                    new_location = _new_location
+                    del filesCollection[initial_path]
+                location = element.addLocation(new_location)
+                location.extra_data["anidb_fid"] = fid # extra_data saves on the fly
+                element.status = common.COMPLETED
+                element.save()
+                if pp.c.stop_after_me_select == common.STOPPPONSUCCESS or pp.c.stop_after_me_select == common.STOPPPALWAYS:
+                    break
+            else:
+                if pp.c.stop_after_me_select == common.STOPPPONFAILURE or pp.c.stop_after_me_select == common.STOPPPALWAYS:
+                    break
+
+        return ppResult
+
 
     # get the list of files
     def _getListOfFiles(self):
@@ -172,7 +202,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                 filesToHash.append(k)
         if len(filesToHash) > 0:
             count = 0
-            for file in anidb.hash.hash_files(filesToHash, False, ('ed2k',), 3):
+            for file in anidb.hash.hash_files(filesToHash, False, ('ed2k',), 1):
                 log.info('{0} ed2k://|file|{1}|{2}|{3}|{4}'.format('Hashed:', file.name, file.size, file.ed2k, ' (cached)' if file.cached else ''))
                 fileDetails = state[self._filesLookup][file.name]
                 fileDetails['ed2k'] = file.ed2k

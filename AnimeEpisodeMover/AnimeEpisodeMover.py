@@ -101,6 +101,7 @@ class AnimeEpisodeMover(PostProcessor):
 
         curFile = allEpisodeFileLocations[0]
         processLogger("Processing episode: %s" % curFile)
+        dst = None
         try:
             extension = os.path.splitext(curFile)[1]
             newFileRoute = u"%s%s" % (self._build_file_name(element), extension)
@@ -130,7 +131,7 @@ class AnimeEpisodeMover(PostProcessor):
         except IOError:
             pass
 
-        return (success, processLog[0])
+        return (success, dst, processLog[0])
 
     def _build_file_name(self, element):
         # '{show_name}/{show_name} - {e#} - {title}'
