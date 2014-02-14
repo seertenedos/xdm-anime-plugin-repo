@@ -72,7 +72,7 @@ class AnimeEpisodeMover(PostProcessor):
             processLog[0] = processLog[0] + createdDate + message + "\n"
 
         def fixName(name):
-            return name.replace(":", " ")
+            return name.replace(":", " ").replace("?", "")
 
         allEpisodeFileLocations = []
         if os.path.isdir(filePath):
@@ -105,6 +105,7 @@ class AnimeEpisodeMover(PostProcessor):
         try:
             extension = os.path.splitext(curFile)[1]
             newFileRoute = u"%s%s" % (self._build_file_name(element), extension)
+            newFileRoute = fixName(newFileRoute)
             processLogger("New Filename shall be: %s" % newFileRoute)
 
             dst = os.path.join(self.e.show_parent_path, newFileRoute)
