@@ -134,7 +134,7 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                     break
                 if aid == file_info["aid"]:
                     for episode in list(anime.children):
-                        if str(episode.number) == file_info["epno"]:
+                        if int(episode.number) == int(file_info["epno"]):
                             #location = episode.addLocation(file_location)
                             #location.extra_data["anidb_fid"] = file_info["fid"] # extra_data saves on the fly
                             #episode.status = common.COMPLETED
