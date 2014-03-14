@@ -37,11 +37,15 @@ class AniDbFileBasedMediaAdder(MediaAdder):
 
     _config = {'path_to_scan': '',
                'anidb_username':'',
-               'anidb_password':''}
+               'anidb_password':'',
+               'series_wanted':True,
+               'episodes_wanted':True}
     config_meta = {'plugin_desc': 'Scans for files to look up on AniDB and to import.',
                    'path_to_scan': {'human': 'Directory to scan'},
                    'anidb_username': {'human': 'AniDB Username'},
-                   'anidb_password': {'human': 'AniDB Password'}}
+                   'anidb_password': {'human': 'AniDB Password'},
+                   'series_wanted': {'human': 'Set series as Wanted after import completes'},
+                   'episodes_wanted': {'human': 'Set missing episodes as Wanted after import completes'}}
 
     _allowed_extensions = ('.avi', '.mkv', '.iso', '.mp4', '.ogm')
     stateFile = os.path.join(xdm.DATADIR, 'AniDbFileBasedMediaAdder_state.json')
@@ -144,7 +148,32 @@ class AniDbFileBasedMediaAdder(MediaAdder):
                             found = True
                             break
         self._saveState(state)
-        log.info('MediaAdder FInished')
+
+        log.info('MediaAdder Finished Adding media.')
+        log.info('MediaAdder setting status on missing episodes or series or both.')
+        for aid, uid, anime in [(m.additionalData["aid"], m.externalID, m.root) for m in mediaList]:
+            if self.c.episodes_wanted:
+                #setting episodes to wanted if not completed
+                for episode in list(anime.children):
+                    if episode.status != common.COMPLETED:
+                        episode.status = common.WANTED
+                        episode.save()
+
+            #setting series status to completed if all done or wanted if asked for wanted otherwise left as ignore
+            complete = True
+            for episode in list(anime.children):
+                if episode.status != common.COMPLETED:
+                    complete = False
+                    break
+            if complete:
+                anime.status = common.COMPLETED
+            elif self.c.series_wanted:
+                anime.status = common.WANTED
+            else:
+                anime.status = common.DOWNLOADED
+            anime.save()
+
+        log.info('MediaAdder Finished')
         return True
 
 
